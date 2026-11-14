@@ -1,0 +1,190 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Painel de Cotação</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: caixa de colagem no topo, resultado em lista de peças com link, soma ao final. Uso interno. */
+:root{
+  --bg:#f3f6f8; --surface:#ffffff; --fg:#13202b; --muted:#5a6b78; --line:#d6dee4;
+  --accent:#0b7a6e; --accent-fg:#ffffff; --accent-soft:#dcf1ed; --ink:#0f2230; --ink-fg:#e6f0f5;
+  --warn:#9a5b00; --warn-soft:#fff1d6; --bad:#a32a2a; --bad-soft:#fde4e4;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c151c; --surface:#142029; --fg:#e4edf2; --muted:#93a5b2; --line:#26373f;
+  --accent:#3fc9b4; --accent-fg:#06211d; --accent-soft:#12383a; --ink:#091219; --ink-fg:#e6f0f5;
+  --warn:#f2b44d; --warn-soft:#3a2d12; --bad:#ff9a9a; --bad-soft:#3b1a1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c151c; --surface:#142029; --fg:#e4edf2; --muted:#93a5b2; --line:#26373f;
+  --accent:#3fc9b4; --accent-fg:#06211d; --accent-soft:#12383a; --ink:#091219; --ink-fg:#e6f0f5;
+  --warn:#f2b44d; --warn-soft:#3a2d12; --bad:#ff9a9a; --bad-soft:#3b1a1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:980px;margin:0 auto}
+h1,h2{margin:0;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(26px,4.5vw,38px);line-height:1.1}
+.label{font:500 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header{padding:36px 0 18px;display:grid;gap:10px}
+header p{margin:0;color:var(--muted);max-width:64ch}
+.badge{justify-self:start;font:500 11px var(--font-mono);letter-spacing:.08em;background:var(--warn-soft);color:var(--warn);padding:5px 9px;border-radius:3px}
+textarea{width:100%;min-height:230px;resize:vertical;font:13px/1.55 var(--font-mono);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:14px}
+textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 0}
+.btn{font:600 14px var(--font-body);border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btn.main{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn:hover{filter:brightness(1.06)}
+section{margin-top:34px}
+.head{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.head h2{font-size:21px}
+.list{display:grid;gap:10px}
+.part{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:6px 18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+@media (max-width:700px){.part{grid-template-columns:1fr}}
+.part .cat{font:500 11px var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.part b{font-weight:600;display:block;overflow-wrap:anywhere}
+.part .meta{font:400 12.5px var(--font-mono);color:var(--muted);overflow-wrap:anywhere}
+.nums{text-align:right;font:500 13px var(--font-mono);font-variant-numeric:tabular-nums;display:grid;gap:2px}
+.nums strong{font-size:16px}
+@media (max-width:700px){.nums{text-align:left}}
+.part a.go{display:inline-block;margin-top:6px;font-weight:600;color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor}
+.part.warn{border-color:var(--warn)}
+.part.bad{border-color:var(--bad);background:var(--bad-soft)}
+.flag{display:inline-block;margin-top:6px;font-size:12.5px;background:var(--warn-soft);color:var(--warn);padding:3px 8px;border-radius:3px}
+.sum{margin-top:14px;background:var(--ink);color:var(--ink-fg);border-radius:10px;padding:18px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.sum .label{color:#8fb0c2}
+.sum b{display:block;margin-top:6px;font:600 24px var(--font-mono);font-variant-numeric:tabular-nums;color:#6fe0cd}
+.sum small{color:#8fb0c2;font-size:12px}
+.empty{color:var(--muted);padding:18px;border:1px dashed var(--line);border-radius:8px}
+.fine{margin-top:28px;color:var(--muted);font-size:12.5px;max-width:78ch}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="badge">USO INTERNO · NÃO COMPARTILHAR COM O CLIENTE</span>
+  <h1>Painel de cotação</h1>
+  <p>Cole a configuração que o cliente enviou pelo site. O painel identifica cada peça e mostra o link da loja e o preço de referência.</p>
+</header>
+
+<label class="label" for="in">Configuração enviada pelo cliente</label>
+<textarea id="in" spellcheck="false" placeholder="Cole aqui o texto copiado do site..." style="margin-top:8px"></textarea>
+<div class="bar">
+  <button type="button" class="btn main" id="go">Gerar links</button>
+  <button type="button" class="btn" id="ex">Carregar exemplo</button>
+  <button type="button" class="btn" id="clr">Limpar</button>
+</div>
+
+<section id="out" hidden aria-live="polite">
+  <div class="head"><h2 id="ttl">Peças identificadas</h2><button type="button" class="btn" id="cp">Copiar todos os links</button></div>
+  <div class="list" id="list"></div>
+  <div class="sum" id="sum"></div>
+</section>
+<p class="fine">Preços de loja de 13/11/2026 (à vista no PIX), coletados em pesquisa e sujeitos a variação. Confirme o valor e o estoque em cada link antes de fechar a compra. Peças marcadas em amarelo têm link genérico ou preço não cotado.</p>
+</div>
+
+<script>
+const S="https://www.pichau.com.br/search?q=";
+/* cat: categoria; nome: como aparece no site; l: preço de loja; v: com +10%; fl: aviso */
+const C=[
+{cat:"cpu",nome:"Intel Core Ultra 5 245K",prod:"Intel Core Ultra 5 245K (BX80768245K)",loja:"TerabyteShop",l:1300,v:1430,url:"https://www.terabyteshop.com.br/produto/32051/processador-intel-core-ultra-5-245k-36-ghz-52ghz-turbo-serie-2-14-cores-14-threads-lga-1851-bx80768245k"},
+{cat:"cpu",nome:"Intel Core Ultra 7 265K",prod:"Intel Core Ultra 7 265K (BX80768265K)",loja:"KaBuM",l:2828,v:3111,url:"https://www.kabum.com.br/produto/658023/processador-intel-core-ultra-7-265k-arrow-lake-3-9ghz-5-5ghz-turbo-20cores-20threads-lga-1851-video-integrado"},
+{cat:"cpu",nome:"Intel Core Ultra 7 265",prod:"Intel Core Ultra 7 265 (BX80768265-BR)",loja:"Pichau",l:2500,v:2750,url:"https://www.pichau.com.br/processador-intel-core-ultra-7-265-20-core-20-threads-2-40ghz-5-3ghz-turbo-cache-30mb-lga1851-bx80768265-br"},
+{cat:"cpu",nome:"AMD Ryzen 5 7600",prod:"AMD Ryzen 5 7600 (100-100001015BOX)",loja:"TerabyteShop",l:1030,v:1133,url:"https://www.terabyteshop.com.br/produto/23415/processador-amd-ryzen-5-7600-38ghz-51ghz-turbo-6-cores-12-threads-am5-com-cooler-amd-wraith-stealth-100-100001015box"},
+{cat:"cpu",nome:"AMD Ryzen 7 7700",prod:"AMD Ryzen 7 7700 (100-100000592BOX-BR)",loja:"Pichau",l:1900,v:2090,url:"https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box-br"},
+{cat:"cpu",nome:"AMD Ryzen 7 9700X",prod:"AMD Ryzen 7 9700X (100-100001404WOF-BR)",loja:"Pichau",l:2890,v:3179,url:"https://www.pichau.com.br/processador-amd-ryzen-7-9700x-8-core-16-threads-3-8ghz-5-5ghz-turbo-cache-40mb-am5-100-100001404wof-br"},
+{cat:"board",nome:"Gigabyte B860M H",prod:"Gigabyte B860M H (B860M-H)",loja:"Pichau",l:830,v:913,url:"https://www.pichau.com.br/placa-mae-gigabyte-b860m-h-ddr5-lga1851-m-atx-chipset-intel-b860-b860m-h"},
+{cat:"board",nome:"Gigabyte B860M Eagle Plus WiFi6",prod:"Gigabyte B860M Eagle Plus WiFi6",loja:"TerabyteShop",l:1290,v:1419,url:"https://www.terabyteshop.com.br/produto/37469/placa-mae-gigabyte-b860m-eagle-plus-wifi6-chipset-b860-intel-lga-1851-matx-ddr5"},
+{cat:"board",nome:"Gigabyte B860M Aorus Elite",prod:"Gigabyte B860M Aorus Elite (B860M-AORUS-ELITE)",loja:"Pichau",l:1500,v:1650,url:"https://www.pichau.com.br/placa-mae-gigabyte-b860m-aorus-elite-ddr5-lga1851-m-atx-chipset-intel-b860-b860m-aorus-elite"},
+{cat:"board",nome:"ASUS B650M-AYW WIFI",prod:"ASUS B650M-AYW WIFI (90MB1KI0-M0EAY0)",loja:"TerabyteShop",l:850,v:935,url:"https://www.terabyteshop.com.br/produto/34488/placa-mae-asus-b650m-ayw-wifi-chipset-b650-amd-am5-matx-ddr5-90mb1ki0-m0eay0"},
+{cat:"board",nome:"Gigabyte B650M Aorus Elite",prod:"Gigabyte B650M Aorus Elite",loja:"KaBuM",l:1320,v:1452,url:"https://www.kabum.com.br/produto/452846/placa-mae-gigabyte-b650m-aorus-elite-amd-am5-micro-atx-ddr5"},
+{cat:"ram",nome:"32 GB DDR5-5600 (2×16 GB)",ex:"cl40",prod:"Kingston FURY Beast 32GB (2×16GB) DDR5-5600 CL40 (KF556C40BBK2-32)",loja:"Pichau",l:2340,v:2574,url:"https://www.pichau.com.br/memoria-kingston-fury-beast-32gb-2x16gb-ddr5-5600mhz-c40-preta-kf556c40bbk2-32"},
+{cat:"ram",nome:"32 GB DDR5-5600 (2×16 GB)",ex:"expo",prod:"Kingston FURY Beast 32GB (2×16GB) DDR5-5600 CL36 EXPO (KF556C36BBEK2-32)",loja:"Pichau",l:2800,v:3080,url:"https://www.pichau.com.br/memoria-kingston-fury-32gb-2x16gb-ddr5-5600mhz-c36-preto-kf556c36bbek2-32"},
+{cat:"ssd",nome:"NVMe 1 TB PCIe 4.0",prod:"Team Group T-Force Cardea A440 Pro 1TB (TM8FPR001T0C129)",loja:"Pichau",l:750,v:825,url:"https://www.pichau.com.br/ssd-team-group-cardea-a440-pro-1tb-m-2-2280-pcie-nvme-leitura-7400-mb-s-gravacao-7000-mb-s-tm8fpr001t0c129"},
+{cat:"ssd",nome:"NVMe 1 TB PCIe 4.0 alto desempenho",prod:"Kingston KC3000 1TB (SKC3000S/1024G)",loja:"TerabyteShop",l:1600,v:1760,url:"https://www.terabyteshop.com.br/produto/21156/ssd-kingston-kc3000-1tb-m2-nvme-2280-leitura-7000mbs-e-gravacao-6000mbs-skc3000s1024g"},
+{cat:"ssd",nome:"NVMe 1 TB PCIe 4.0 premium",prod:"SanDisk Optimus GX 7100 1TB (SDSP71100TAN-000E0)",loja:"TerabyteShop",l:2200,v:2420,url:"https://www.terabyteshop.com.br/produto/43761/ssd-sandisk-optimus-gx-7100-1tb-nvme-pcie-40-m2-2280-leitura-7250mbs-e-gravacao-6900mbs-sdsp71100tan-000e0"},
+{cat:"gpu",nome:"NVIDIA RTX A2000 12 GB",prod:"PNY NVIDIA RTX A2000 12GB (VCNRTXA200012GB-PB)",loja:"Pichau",l:5600,v:6160,url:"https://www.pichau.com.br/placa-de-video-pny-quadro-rtx-a2000-12gb-gddr6-192-bit-vcnrtxa200012gb-pb"},
+{cat:"gpu",nome:"NVIDIA T1000 8 GB",prod:"PNY NVIDIA T1000 8GB (VCNT10008GB-PB)",loja:"Pichau",l:null,v:4400,est:true,url:"https://www.pichau.com.br/placa-de-video-pny-quadro-t1000-8gb-gddr6-128-bit-vcnt10008gb-pb",fl:"Preço não cotado: o valor mostrado é uma estimativa. Confirme no link."},
+{cat:"cool",nome:"Cooler original AMD Wraith Stealth",prod:"AMD Wraith Stealth (incluso no Ryzen 5 7600 box)",loja:"—",l:0,v:0,url:"https://www.terabyteshop.com.br/produto/23415/processador-amd-ryzen-5-7600-38ghz-51ghz-turbo-6-cores-12-threads-am5-com-cooler-amd-wraith-stealth-100-100001015box",fl:"Já vem na caixa do processador, sem compra separada."},
+{cat:"cool",nome:"DeepCool Gammaxx AG400",prod:"DeepCool Gammaxx AG400 120mm",loja:"Pichau",l:126,v:139,url:S+"deepcool+gammaxx+ag400",fl:"Link de busca na Pichau. O link original da cotação era de um agregador."},
+{cat:"cool",nome:"DeepCool AK400 Digital SE",prod:"DeepCool AK400 Digital SE ARGB 120mm",loja:"Pichau",l:250,v:275,url:S+"deepcool+ak400+digital+se",fl:"Link de busca na Pichau. O link original da cotação era de um agregador."},
+{cat:"cool",nome:"Water cooler Montech HyperFlow 240 mm",prod:"Water cooler Montech HyperFlow ARGB 240mm (preto)",loja:"TerabyteShop",l:500,v:550,url:"https://www.terabyteshop.com.br/produto/30318/water-cooler-montech-hyperflow-argb-240mm-intel-amd-preto"},
+{cat:"case",nome:"Montech AIR 100 ARGB",prod:"Montech AIR 100 ARGB (branco) — mATX",loja:"TerabyteShop",l:315,v:346,url:"https://www.terabyteshop.com.br/produto/18716/gabinete-gamer-montech-air-100-argb-mini-tower-vidro-temperado-white-micro-atx"},
+{cat:"case",nome:"Montech Heritage PRO",prod:"Montech Heritage PRO (preto) — mATX",loja:"TerabyteShop",l:550,v:605,url:"https://www.terabyteshop.com.br/produto/32692/gabinete-montech-heritage-pro-mini-tower-couro-e-metal-matx-sem-fonte-com-4-fans-preto"},
+{cat:"psu",nome:"Fonte 650 W 80 Plus Bronze",prod:"Rise Mode Elektra 650W 80 Plus Bronze (RM-PSU-ELK-650-B)",loja:"TerabyteShop",l:240,v:264,url:"https://www.terabyteshop.com.br/produto/40648/fonte-rise-mode-elektra-650w-80-plus-bronze-pfc-ativo-preto-rm-psu-elk-650-b"},
+{cat:"psu",nome:"Fonte 650 W 80 Plus Gold",prod:"MSI MAG A650GN II 650W 80 Plus Gold ATX 3.1",loja:"TerabyteShop",l:370,v:407,url:"https://www.terabyteshop.com.br/produto/40899/fonte-msi-mag-a650gn-ii-650w-80-plus-gold-atx-31-pfc-ativo-preto"},
+{cat:"psu",nome:"Fonte 850 W 80 Plus Gold",prod:"ASRock Steel Legend SL-850G 850W 80 Plus Gold (full modular)",loja:"TerabyteShop",l:710,v:781,url:"https://www.terabyteshop.com.br/busca?str=asrock+steel+legend+sl-850g",fl:"Link de busca na Terabyte, pois o link original era uma página de categoria."},
+{cat:"os",nome:"Windows 11 Pro 64 bits",prod:"Microsoft Windows 11 Pro 64 bits — licença OEM",loja:"KaBuM",l:990,v:1089,url:"https://www.kabum.com.br/busca/windows-11-pro-oem",fl:"Link de busca na KaBuM. O link original da cotação era de um agregador."}
+];
+const LAB={"processador":"cpu","placa-mae":"board","memoria":"ram","armazenamento":"ssd","placa de video":"gpu","refrigeracao":"cool","gabinete":"case","fonte":"psu","sistema":"os"};
+const CATN={cpu:"Processador",board:"Placa-mãe",ram:"Memória",ssd:"Armazenamento",gpu:"Placa de vídeo",cool:"Refrigeração",case:"Gabinete",psu:"Fonte",os:"Sistema"};
+const norm=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const fmt=n=>"R$ "+Math.round(n).toLocaleString("pt-BR");
+const $=id=>document.getElementById(id);
+let found=[];
+function parse(text){
+  const rows=[];let title="";
+  text.split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim();if(!line)return;
+    if(/^esta[cç][aã]o ris/i.test(line)){title=line.replace(/^esta[cç][aã]o ris\s*[—-]\s*/i,"");return}
+    if(/^valor m[eé]dio/i.test(line))return;
+    const i=line.indexOf(":");if(i<0){rows.push({raw:line,bad:true});return}
+    const lab=norm(line.slice(0,i).trim()),rest=line.slice(i+1).trim(),cat=LAB[lab];
+    if(!cat){rows.push({raw:line,bad:true});return}
+    const r=norm(rest);
+    let cands=C.filter(c=>c.cat===cat&&r.includes(norm(c.nome)));
+    if(cat==="ram")cands=cands.filter(c=>r.includes(c.ex==="expo"?"expo":"cl40"));
+    cands.sort((a,b)=>b.nome.length-a.nome.length);
+    rows.push(cands[0]?{cat,c:cands[0],raw:line}:{cat,raw:line,bad:true});
+  });
+  return{title,rows};
+}
+function run(){
+  const{title,rows}=parse($("in").value);
+  const out=$("out"),list=$("list"),sum=$("sum");
+  if(!rows.length){out.hidden=true;return}
+  out.hidden=false;list.innerHTML="";found=[];
+  $("ttl").textContent="Peças identificadas"+(title?" · "+title:"");
+  let tl=0,tv=0,miss=0,est=false;
+  rows.forEach(r=>{
+    const d=document.createElement("div");
+    if(r.bad){d.className="part bad";miss++;
+      d.innerHTML=`<span class="cat">${r.cat?CATN[r.cat]:"Linha"}</span><div><b>Não reconhecida</b><span class="meta"></span></div><div></div>`;
+      d.querySelector(".meta").textContent=r.raw;list.appendChild(d);return}
+    const c=r.c;found.push(c);tl+=c.l||0;tv+=c.v;if(c.est)est=true;
+    d.className="part"+(c.fl?" warn":"");
+    d.innerHTML=`<span class="cat">${CATN[c.cat]}</span>
+      <div><b></b><span class="meta"></span><br><a class="go" target="_blank" rel="noopener">Abrir na loja ↗</a>${c.fl?'<br><span class="flag"></span>':""}</div>
+      <div class="nums"><span>${c.l===null?"sem cotação":"Loja "+fmt(c.l)}</span><strong>${fmt(c.v)}</strong><span>+10%${c.est?" (estimado)":""}</span></div>`;
+    d.querySelector("b").textContent=c.prod;
+    d.querySelector(".meta").textContent="Loja: "+c.loja;
+    const a=d.querySelector("a");a.href=c.url;
+    if(c.fl)d.querySelector(".flag").textContent=c.fl;
+    list.appendChild(d)});
+  sum.innerHTML=`<div><span class="label">Soma nas lojas</span><b>${fmt(tl)}</b><small>${est?"Sem a T1000, que não tem cotação.":"Preços à vista no PIX"}</small></div>
+   <div><span class="label">Soma com +10%</span><b>${fmt(tv)}</b><small>Valor de referência para o orçamento${est?" (T1000 estimada)":""}</small></div>
+   <div><span class="label">Situação</span><b style="font-size:18px">${found.length} de ${rows.length} reconhecidas</b><small>${miss?"Confira as linhas em vermelho.":"Todas as peças identificadas."}</small></div>`;
+}
+$("go").onclick=run;
+$("in").addEventListener("input",run);
+$("in").addEventListener("paste",()=>setTimeout(run,0));
+$("clr").onclick=()=>{$("in").value="";$("out").hidden=true};
+$("ex").onclick=()=>{$("in").value=`Estação RIS — Entrada · Intel
+Processador: Intel Core Ultra 5 245K (14 núcleos (6P+8E) · até 5,2 GHz · 24 MB)
+Placa-mãe: Gigabyte B860M H (B860 · LGA1851 · Micro-ATX)
+Memória: 32 GB DDR5-5600 (2×16 GB) (CL40 · dual channel · dissipador)
+Armazenamento: NVMe 1 TB PCIe 4.0 (M.2 2280 · leitura até 7.200 MB/s)
+Placa de vídeo: NVIDIA RTX A2000 12 GB (Ampere · 3.328 CUDA · 12 GB GDDR6 ECC · 192 bits · 70 W · 4× mini-DP)
+Refrigeração: DeepCool Gammaxx AG400 (Air cooler torre · ventoinha 120 mm)
+Gabinete: Montech AIR 100 ARGB (Mini tower mATX · 405×210×425 mm · 4 ventoinhas)
+Fonte: Fonte 650 W 80 Plus Bronze (ATX · PFC ativo)
+Sistema: Windows 11 Pro 64 bits (Licença OEM)
+Valor médio estimado: R$ 13.700`;run()};
+$("cp").onclick=()=>{
+  const t=found.map(c=>CATN[c.cat]+": "+c.prod+"\n"+c.url).join("\n\n");
+  const ok=()=>{$("cp").textContent="Links copiados";setTimeout(()=>$("cp").textContent="Copiar todos os links",1800)};
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(ok).catch(()=>{
+    const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(e){}a.remove();ok()})};
+$("ex").click();
+</script>
+
+</body></html>
