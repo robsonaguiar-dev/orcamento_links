@@ -54,6 +54,15 @@ section{margin-top:34px}
 .sum .label{color:#8fb0c2}
 .sum b{display:block;margin-top:6px;font:600 24px var(--font-mono);font-variant-numeric:tabular-nums;color:#6fe0cd}
 .sum small{color:#8fb0c2;font-size:12px}
+.login{display:grid;gap:8px;max-width:360px}
+.login input{font:400 15px var(--font-body);padding:11px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.manual{margin-top:20px}.manual summary{cursor:pointer;color:var(--muted);font-size:14px;margin-bottom:10px}
+.ord{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.ord:hover,.ord.sel{border-color:var(--accent)}
+.ord.sel{box-shadow:0 0 0 2px var(--accent)}
+.ord b{font-weight:600}.ord small{color:var(--muted);font:400 12.5px var(--font-mono)}
+.pill{font:500 11px var(--font-mono);letter-spacing:.08em;padding:3px 8px;border-radius:3px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase}
+.pill.ok{background:var(--line);color:var(--muted)}
 .empty{color:var(--muted);padding:18px;border:1px dashed var(--line);border-radius:8px}
 .fine{margin-top:28px;color:var(--muted);font-size:12.5px;max-width:78ch}
 </style>
@@ -65,6 +74,8 @@ section{margin-top:34px}
   <p id="cliente" class="label" hidden></p>
   <p>Cole a configuração que o cliente enviou pelo site. O painel identifica cada peça e mostra o link da loja e o preço de referência.</p>
 </header>
+
+
 
 <label class="label" for="in">Configuração enviada pelo cliente</label>
 <textarea id="in" spellcheck="false" placeholder="Cole aqui o texto copiado do site..." style="margin-top:8px"></textarea>
@@ -79,7 +90,7 @@ section{margin-top:34px}
   <div class="list" id="list"></div>
   <div class="sum" id="sum"></div>
 </section>
-<p class="fine">Preços de loja de 13/11/2026 (à vista no PIX), coletados em pesquisa e sujeitos a variação. Confirme o valor e o estoque em cada link antes de fechar a compra. Peças marcadas em amarelo têm link genérico ou preço não cotado.</p>
+<p class="fine">Preços projetados para a semana de 23/11/2026, a partir da cotação de 13/11/2026 (à vista no PIX), com alta prevista em memória e SSD. São estimativas e variam de loja para loja. Confirme o valor e o estoque em cada link antes de fechar a compra. Peças marcadas em amarelo têm link genérico ou preço não cotado.</p>
 </div>
 
 <script>
@@ -115,6 +126,9 @@ const C=[
 {cat:"psu",nome:"Fonte 850 W 80 Plus Gold",prod:"ASRock Steel Legend SL-850G 850W 80 Plus Gold (full modular)",loja:"TerabyteShop",l:710,v:781,url:"https://www.terabyteshop.com.br/busca?str=asrock+steel+legend+sl-850g",fl:"Link de busca na Terabyte, pois o link original era uma página de categoria."},
 {cat:"os",nome:"Windows 11 Pro 64 bits",prod:"Microsoft Windows 11 Pro 64 bits — licença OEM",loja:"KaBuM",l:990,v:1089,url:"https://www.kabum.com.br/busca/windows-11-pro-oem",fl:"Link de busca na KaBuM. O link original da cotação era de um agregador."}
 ];
+/* Projeção para a semana de 23/11/2026: base 13/11/2026 + variação provável por categoria. */
+const DR={cpu:1,board:1,ram:1.05,ssd:1.02,gpu:1.02,cool:1,case:1,psu:1,os:1};
+C.forEach(c=>{const f=DR[c.cat]||1;if(c.l===null){c.v=Math.round(c.v*f)}else if(c.l>0){c.l=Math.round(c.l*f);c.v=Math.round(c.l*1.1)}});
 const LAB={"processador":"cpu","placa-mae":"board","memoria":"ram","armazenamento":"ssd","placa de video":"gpu","refrigeracao":"cool","gabinete":"case","fonte":"psu","sistema":"os"};
 const CATN={cpu:"Processador",board:"Placa-mãe",ram:"Memória",ssd:"Armazenamento",gpu:"Placa de vídeo",cool:"Refrigeração",case:"Gabinete",psu:"Fonte",os:"Sistema"};
 const norm=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
@@ -208,5 +222,17 @@ function fromHash(){
 }
 IDN.cool_=s=>IDN.cooler[s.cooler];
 window.addEventListener("hashchange",fromHash);
+function showSel(d){
+  const s=d.s,intel=/^u/.test(s.cpu);
+  const L=["Estação RIS — "+(d.t||"Cliente"),
+   "Processador: "+IDN.cpu[s.cpu],"Placa-mãe: "+IDN.board[s.cpu],
+   "Memória: 32 GB DDR5-5600 (2×16 GB) ("+(intel?"CL40":"CL36 · perfil EXPO")+")",
+   "Armazenamento: "+IDN.ssd[s.ssd],"Placa de vídeo: "+IDN.gpu[s.gpu],"Refrigeração: "+IDN.cooler[s.cooler],
+   "Gabinete: "+IDN.case[s.case],"Fonte: "+IDN.psu[s.psu],"Sistema: Windows 11 Pro 64 bits"];
+  $("in").value=L.join("\n");
+  const c=$("cliente");c.textContent=d.n?"Cliente: "+d.n:"";c.hidden=!d.n;c.style.fontSize="14px";
+  run();$("out").scrollIntoView({behavior:"smooth"});
+}
+
 if(!fromHash())$("ex").click();
 </script>
