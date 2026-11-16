@@ -45,6 +45,9 @@ section{margin-top:34px}
 .part .meta{font:400 12.5px var(--font-mono);color:var(--muted);overflow-wrap:anywhere}
 .nums{text-align:right;font:500 13px var(--font-mono);font-variant-numeric:tabular-nums;display:grid;gap:2px}
 .nums strong{font-size:16px}
+.realp{display:grid;gap:3px;margin-top:8px;font:500 11px var(--font-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.realp input{width:110px;justify-self:end;font:500 13px var(--font-mono);padding:6px 8px;border-radius:5px;border:1px solid var(--line);background:var(--bg);color:var(--fg);text-align:right}
+@media (max-width:700px){.realp input{justify-self:start}}
 @media (max-width:700px){.nums{text-align:left}}
 .part a.go{display:inline-block;margin-top:6px;font-weight:600;color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor}
 .part.warn{border-color:var(--warn)}
@@ -90,7 +93,7 @@ section{margin-top:34px}
   <div class="list" id="list"></div>
   <div class="sum" id="sum"></div>
 </section>
-<p class="fine">Preços projetados para a semana de 23/11/2026, a partir da cotação de 13/11/2026 (à vista no PIX), com alta prevista em memória e SSD. São estimativas e variam de loja para loja. Confirme o valor e o estoque em cada link antes de fechar a compra. Peças marcadas em amarelo têm link genérico ou preço não cotado.</p>
+<p class="fine">Preços projetados para a semana de 23/11/2026, a partir da cotação de 13/11/2026 (à vista no PIX), com alta prevista em memória e SSD. São estimativas e variam de loja para loja. O lucro é o valor médio mostrado ao cliente menos o custo das peças. Confira o preço em cada link e digite o preço real no campo de cada peça para recalcular o lucro. Peças marcadas em amarelo têm link genérico ou preço não cotado.</p>
 </div>
 
 <script>
@@ -134,7 +137,7 @@ const CATN={cpu:"Processador",board:"Placa-mãe",ram:"Memória",ssd:"Armazenamen
 const norm=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 const fmt=n=>"R$ "+Math.round(n).toLocaleString("pt-BR");
 const $=id=>document.getElementById(id);
-let found=[];
+let found=[],items=[];
 function parse(text){
   const rows=[];let title="";
   text.split(/\r?\n/).forEach(raw=>{
@@ -158,25 +161,35 @@ function run(){
   if(!rows.length){out.hidden=true;return}
   out.hidden=false;list.innerHTML="";found=[];
   $("ttl").textContent="Peças identificadas"+(title?" · "+title:"");
-  let tl=0,tv=0,miss=0,est=false;
+  let miss=0;items=[];
   rows.forEach(r=>{
     const d=document.createElement("div");
     if(r.bad){d.className="part bad";miss++;
       d.innerHTML=`<span class="cat">${r.cat?CATN[r.cat]:"Linha"}</span><div><b>Não reconhecida</b><span class="meta"></span></div><div></div>`;
       d.querySelector(".meta").textContent=r.raw;list.appendChild(d);return}
-    const c=r.c;found.push(c);tl+=c.l||0;tv+=c.v;if(c.est)est=true;
+    const c=r.c;found.push(c);const it={c,real:null};items.push(it);
     d.className="part"+(c.fl?" warn":"");
     d.innerHTML=`<span class="cat">${CATN[c.cat]}</span>
       <div><b></b><span class="meta"></span><br><a class="go" target="_blank" rel="noopener">Abrir na loja ↗</a>${c.fl?'<br><span class="flag"></span>':""}</div>
-      <div class="nums"><span>${c.l===null?"sem cotação":"Loja "+fmt(c.l)}</span><strong>${fmt(c.v)}</strong><span>+10%${c.est?" (estimado)":""}</span></div>`;
+      <div class="nums"><span>${c.l===null?"sem cotação":"Loja "+fmt(c.l)}</span><strong>${fmt(c.v)}</strong><span>+10%${c.est?" (estimado)":""}</span><label class="realp">Preço real <input type="number" inputmode="decimal" min="0" step="1" placeholder="${c.l===null?Math.round(c.v/1.1):c.l}" aria-label="Preço real de ${c.prod.replace(/"/g,"")}"></label></div>`;
+    d.querySelector(".realp input").addEventListener("input",e=>{const v=parseFloat(e.target.value);it.real=isNaN(v)?null:v;summarize()});
     d.querySelector("b").textContent=c.prod;
     d.querySelector(".meta").textContent="Loja: "+c.loja;
     const a=d.querySelector("a");a.href=c.url;
     if(c.fl)d.querySelector(".flag").textContent=c.fl;
     list.appendChild(d)});
-  sum.innerHTML=`<div><span class="label">Soma nas lojas</span><b>${fmt(tl)}</b><small>${est?"Sem a T1000, que não tem cotação.":"Preços à vista no PIX"}</small></div>
-   <div><span class="label">Soma com +10%</span><b>${fmt(tv)}</b><small>Valor de referência para o orçamento${est?" (T1000 estimada)":""}</small></div>
-   <div><span class="label">Situação</span><b style="font-size:18px">${found.length} de ${rows.length} reconhecidas</b><small>${miss?"Confira as linhas em vermelho.":"Todas as peças identificadas."}</small></div>`;
+  window.__miss=miss;window.__tot=rows.length;summarize();
+}
+function summarize(){
+  const sum=$("sum");
+  const cust=Math.round(items.reduce((a,i)=>a+i.c.v,0)/100)*100;
+  const cost=items.reduce((a,i)=>a+(i.real!==null?i.real:(i.c.l!==null?i.c.l:Math.round(i.c.v/1.1))),0);
+  const est=items.some(i=>i.c.l===null&&i.real===null),edited=items.filter(i=>i.real!==null).length;
+  const lucro=cust-cost,pct=cust?lucro/cust*100:0;
+  sum.innerHTML=`<div><span class="label">Custo real das peças</span><b>${fmt(cost)}</b><small>${edited?edited+" preço(s) editado(s) por você. ":"Preços de loja projetados. "}${est?"T1000 estimada.":""}</small></div>
+   <div><span class="label">Valor médio ao cliente</span><b>${fmt(cust)}</b><small>O mesmo valor exibido no site</small></div>
+   <div><span class="label">Lucro estimado</span><b style="color:${lucro>=0?"#6fe0cd":"#ff9a9a"}">${fmt(lucro)}</b><small>Margem de ${pct.toFixed(1).replace(".",",")}% sobre o valor ao cliente</small></div>
+   <div><span class="label">Situação</span><b style="font-size:18px">${found.length} de ${window.__tot} reconhecidas</b><small>${window.__miss?"Confira as linhas em vermelho.":"Todas as peças identificadas."}</small></div>`;
 }
 $("go").onclick=run;
 $("in").addEventListener("input",run);
